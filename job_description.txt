@@ -1,0 +1,10 @@
+wecare skat analysis
+
+time: 01:00:00
+start_script: a01_skat_pipeline_slurm.sh
+scripts_folder: /scratch/medgen/scripts/wecare_skat_08.16/scripts
+
+project_folder: /scratch/medgen/users/alexey/wecare_aug2016
+
+r_libs_folder: /scratch/medgen/tools/r/R-3.2.2/lib64/R/library
+r_bin_folder: /scratch/medgen/tools/r/R-3.2.2/bin
