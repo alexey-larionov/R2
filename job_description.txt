@@ -8,3 +8,29 @@ project_folder: /scratch/medgen/users/alexey/wecare_aug2016
 
 r_libs_folder: /scratch/medgen/tools/r/R-3.2.2/lib64/R/library
 r_bin_folder: /scratch/medgen/tools/r/R-3.2.2/bin
+
+# ----- Thresholds for GENOTYPES filtering ----- #
+
+# removes ~10% of genotypes:
+# 5% scattered everywere and
+# 5% of them concentrated in "bad" variants.  
+# These "bad" variants are subsequently removed by the call rate threshold.
+
+min_dp: 10
+max_dp: 500
+min_gq: 20
+
+# The hets filter could be "probability" or "fraction"
+hets_filter_type: probability
+hets_filter_threshold: 0.05
+
+#hets_filter_type: fraction
+#hets_filter_threshold: 0.35
+
+# FRMA = fraction of reads supporting minor allele
+homs_max_frma: 0.05
+
+# ----- Threshold for final VARIANTS filtering ----- #
+
+# Min call rate per variant
+min_call_rate: 0.8

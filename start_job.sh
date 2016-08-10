@@ -2,7 +2,7 @@
 
 # start_job.sh
 # wecare skat analysis
-# Alexey Larionov, 01Aug2016
+# Alexey Larionov, 04Aug2016
 # Version 1
 
 # Use: 

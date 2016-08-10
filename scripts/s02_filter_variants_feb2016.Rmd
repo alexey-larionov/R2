@@ -26,6 +26,10 @@ interim_data_folder <- params$interim_data
 # Remove params object to avoid interference with load() function
 rm(params)
 
+# For debugging
+#interim_data_folder <- "/scratch/medgen/users/alexey/wecare_aug2016/interim_data"
+#setwd("/scratch/medgen/scripts/wecare_skat_08.16/scripts")
+
 ```
 
 # load_and_check_data
