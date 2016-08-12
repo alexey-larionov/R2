@@ -1,6 +1,6 @@
 wecare skat analysis
 
-time: 12:00:00
+time: 01:00:00
 start_script: a01_skat_pipeline_slurm.sh
 scripts_folder: /scratch/medgen/scripts/wecare_skat_08.16/scripts
 
@@ -35,10 +35,13 @@ homs_max_frma: 0.05
 # Min call rate per variant
 min_call_rate: 0.8
 
-# ----- Other settongs ----- #
+# ----- Other settings ----- #
 
-start_step: 5
-data_subset: std.2
+start_step: 8
+
+Allowed start steps: 1, 5 and 8
+
+data_subset: priority_genes_strict
 
 Allowed subsets:
 strict
@@ -48,3 +51,5 @@ relaxed
 priority_genes_relaxed
 priority_genes_strict
 all_variants
+
+gene_groups: dna_repair,bc_risk,bc_somatic,es_related

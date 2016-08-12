@@ -18,7 +18,7 @@
 #SBATCH --no-requeue
 #SBATCH -p sandybridge
 ##SBATCH --output skat_pipeline.log
-##SBATCH --qos=INTR
+#SBATCH --qos=INTR
 
 # Stop on errors
 set -e
@@ -76,6 +76,7 @@ min_call_rate=$(awk '$1=="min_call_rate:" {print $2}' "${job_file}")
 
 data_subset=$(awk '$1=="data_subset:" {print $2}' "${job_file}")
 start_step=$(awk '$1=="start_step:" {print $2}' "${job_file}")
+gene_groups=$(awk '$1=="gene_groups:" {print $2}' "${job_file}")
 
 #--------------------------------------------------#
 #          Report parameters for the job           #
@@ -104,7 +105,8 @@ echo ""
 echo "min_call_rate: ${min_call_rate}" # e.g. 0.8
 echo ""
 echo "data_subset: ${data_subset}" # e.g. priority_genes_strict
-echo "start_step: ${start_step}" # Can be 1 or 5
+echo "start_step: ${start_step}" # Can be 1 or 5 or 8
+echo "gene_groups: ${gene_groups}" # Can be "dna_repair,bc_risk,bc_somatic,es_related"
 echo ""
 echo " ------------------------ "
 
@@ -257,7 +259,7 @@ echo ""
 echo "Started reshaping data: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-#if [ "a" == "a" ]; then
+if [ "${start_step}" == "1" ] || [ "${start_step}" == "5" ]; then
 #######################
 
 # R script name
@@ -274,7 +276,7 @@ r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_scr
 "${r}" -e "${r_expressions}"
 
 #######################
-#fi
+fi
 #######################
 
 # Progress report
@@ -292,7 +294,7 @@ echo ""
 echo "Started calculating afs: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-#if [ "a" == "a" ]; then
+if [ "${start_step}" == "1" ] || [ "${start_step}" == "5" ]; then
 #######################
 
 # R script name
@@ -309,7 +311,7 @@ r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_scr
 "${r}" -e "${r_expressions}"
 
 #######################
-#fi
+fi
 #######################
 
 # Progress report
@@ -327,7 +329,7 @@ echo ""
 echo "Started calculating variants glm: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-#if [ "a" == "a" ]; then
+if [ "${start_step}" == "1" ] || [ "${start_step}" == "5" ]; then
 #######################
 
 # R script name
@@ -344,7 +346,7 @@ r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_scr
 "${r}" -e "${r_expressions}"
 
 #######################
-#fi
+fi
 #######################
 
 # Progress report
@@ -362,7 +364,7 @@ echo ""
 echo "Started calculating genes skat: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-#if [ "a" == "a" ]; then
+if [ "${start_step}" == "1" ] || [ "${start_step}" == "5" ] || [ "${start_step}" == "8" ]; then
 #######################
 
 # R script name
@@ -379,7 +381,7 @@ r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_scr
 "${r}" -e "${r_expressions}"
 
 #######################
-#fi
+fi
 #######################
 
 # Progress report
@@ -389,9 +391,39 @@ echo " ------------------------ "
 echo ""
 
 #--------------------------------------------------#
-#       Calculate priority gene groups skat        #
+#            Calculate gene groups skat            #
 #--------------------------------------------------#
 # ~5 min
+
+# Progress report
+echo "Started calculating gene groups skat: $(date +%d%b%Y_%H:%M:%S)"
+
+#######################
+if [ "${start_step}" == "1" ] || [ "${start_step}" == "5" ] || [ "${start_step}" == "8" ]; then
+#######################
+
+# R script name
+r_script="${scripts_folder}/s09_groups_SKAT_feb2016.Rmd"
+
+# Report name
+r_script_name=$(basename "${r_script}")
+html_report="${logs_folder}/${r_script_name%.Rmd}_${data_subset}.html"
+
+# Compile R expression to run (commnds are in single line, separated by semicolon)
+r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_script}"', params=list(interim_data='"${interim_data_folder}"', subset='"${data_subset}"', results_folder='"${results_folder}"', scripts_folder='"${scripts_folder}"', gene_groups='"${gene_groups}"'), output_file='"${html_report}"')"
+
+# Run R expressions
+"${r}" -e "${r_expressions}"
+
+#######################
+fi
+#######################
+
+# Progress report
+echo "Completed calculating genes skat: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
 
 #--------------------------------------------------#
 

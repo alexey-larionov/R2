@@ -1,5 +1,5 @@
 ---
-title: "Calculate SKAT for genes, wecare feb2016"
+title: "Calculate SKAT for genes groups, wecare feb2016"
 author: "Alexey Larionov"
 output: html_document
 params:
@@ -7,10 +7,11 @@ params:
   subset: ""
   results_folder: ""
   scripts_folder: ""
+  gene_groups: ""
 ---
 
 started: Mar2016  
-last_updated: 11Aug2016
+last_updated: 12Aug2016
 
 # Summary
 
@@ -32,19 +33,23 @@ interim_data_folder <- params$interim_data
 data_subset <- params$subset
 results_folder <- params$results_folder
 scripts_folder <- params$scripts_folder
+gene_groups <- params$gene_groups
 
 library(SKAT)
 
 # For debugging
-rm(list=ls())
-interim_data_folder <- "/scratch/medgen/users/alexey/wecare_aug2016/interim_data"
-data_subset <- "priority_genes_strict"
-results_folder <- "/scratch/medgen/users/alexey/wecare_aug2016/results"
-scripts_folder <- "/scratch/medgen/scripts/wecare_skat_08.16/scripts"
-setwd("/scratch/medgen/scripts/wecare_skat_08.16/scripts")
+#rm(list=ls())
 
-# Check subset
-if (! data_subset %in% c("strict", "std.1", "std.2", "relaxed", "priority_genes_relaxed", "priority_genes_strict")){
+#interim_data_folder <- "/scratch/medgen/users/alexey/wecare_aug2016/interim_data"
+#data_subset <- "priority_genes_strict"
+#results_folder <- "/scratch/medgen/users/alexey/wecare_aug2016/results"
+#scripts_folder <- "/scratch/medgen/scripts/wecare_skat_08.16/scripts"
+#gene_groups <- "dna_repair,bc_risk,bc_somatic,es_related"
+
+#setwd("/scratch/medgen/scripts/wecare_skat_08.16/scripts")
+
+# Check data subset
+if (! data_subset %in% c("strict", "std.1", "std.2", "relaxed", "priority_genes_relaxed", "priority_genes_strict", "all_variants")){
   print("Wrong data subset")
   stop
 }
@@ -123,7 +128,7 @@ See separate R file
 
 ```{r load_SKAT_accessory_functions, echo=FALSE}
 
-source(paste(scripts_folder,"s08_SKAT_accessory_functions.R", sep="/"))
+source(paste(scripts_folder,"g01_SKAT_accessory_functions.R", sep="/"))
 
 ```
 
@@ -138,7 +143,7 @@ results='hide'
 #                   Report settings                 #
 #---------------------------------------------------#
 
-prefix=data_subset
+prefix=paste("gene_groups", data_subset, sep="_")
 report_type="full"
 path=paste(results_folder,"/",sep="")
 
@@ -206,51 +211,46 @@ rm(lobular, stage, hormone, chemo, treatment, num_preg, eigen1, eigen2, eigen3)
 # Write headers to the results table(s)
 prepare_tables_for_results(prefix, report_type, path)
 
-# Get list of genes
-genes <- unique(as.vector(variants.df$SYMBOL))
+# Get vector of gene groups
+gene_groups <- unlist(as.vector(strsplit(gene_groups,",")))
 
-#genes <- c("ATM", "TMCO4", "CHEK1", "CCNL2") 
-# ATM is a known candidate, TMCO4 is a random pick
-# CHEK1 & CCNL have a single variant per gene, but different allelic frequencies: 
-# so they call differnt method.bin and produce different structure of skat test objects
-
-# For some genes (e.g. SLC45A1=gene35 and ROR1=gene323)
-# SKATBinary(SKATO) caused crashes with explicit weights:
-# e.g. with options [ method="SKATO", weights=c(1,1) ]
-# This had to be handled in the accessory functions, 
-# see details in comments in the accessory functions file. 
-
-# For each gene
-for (gene in genes){
+# For each gene group
+for (genes_group in gene_groups){
   
-  #gene <- genes[3663]
+  #genes_group <- "dna_repair"
+  #gene_group <- "es_related"
   
   # Get list of variants
-  variants_id <- rownames(variants.df[variants.df$SYMBOL == gene,])
+  selected_variants <- grepl(genes_group, variants.df$priority_genes)
+  variants_id <- rownames(variants.df[selected_variants,])
 
-  # For genes with a single variant
+  # Initial alleles count in CBC and UBC
+  AC_UBC <- sum(as.vector(variants.df[variants_id,"AC_UBC"]), na.rm=TRUE)
+  AC_CBC <- sum(as.vector(variants.df[variants_id,"AC_CBC"]), na.rm=TRUE)
+
+  # For groups with a single variant
   if(length(variants_id)==1){
     
     # Get genotypes for the variant
     variant <- genotypes.mx[variants_id,]
     
     # Calculate test
-    skat.test <- run_single_variant_test(gene, phenotypes, covariates, variant)
+    skat.test <- run_single_variant_test(genes_group, phenotypes, covariates, variant)
     
     # Print result to report file(s)
-    print_results_for_single_variant(skat.test, prefix, report_type, path)
+    print_results_for_single_variant(skat.test, prefix, AC_UBC, AC_CBC, report_type, path)
     
     
-  }else{ # For genes containing multiple variants
+  }else{ # For gene groups containing multiple variants
     
     # Get the genotypes
     genotypes <- t(genotypes.mx[variants_id,])
     
     # Calculate tests
-    skat.test <- run_tests_for_multiple_variants(gene, phenotypes, covariates, genotypes)
+    skat.test <- run_tests_for_multiple_variants(genes_group, phenotypes, covariates, genotypes)
 
     # Print results to report file(s)
-    print_results_for_multiple_variants(skat.test, prefix, report_type, path)
+    print_results_for_multiple_variants(skat.test, prefix, AC_UBC, AC_CBC, report_type, path)
 
   }
 }

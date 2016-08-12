@@ -123,7 +123,7 @@ See separate R file
 
 ```{r load_SKAT_accessory_functions, echo=FALSE}
 
-source(paste(scripts_folder,"s08_SKAT_accessory_functions.R", sep="/"))
+source(paste(scripts_folder,"g01_SKAT_accessory_functions.R", sep="/"))
 
 ```
 
@@ -228,6 +228,10 @@ for (gene in genes){
   # Get list of variants
   variants_id <- rownames(variants.df[variants.df$SYMBOL == gene,])
 
+  # Initial alleles count in CBC and UBC
+  AC_UBC <- sum(as.vector(variants.df[variants_id,"AC_UBC"]), na.rm=TRUE)
+  AC_CBC <- sum(as.vector(variants.df[variants_id,"AC_CBC"]), na.rm=TRUE)
+
   # For genes with a single variant
   if(length(variants_id)==1){
     
@@ -238,7 +242,7 @@ for (gene in genes){
     skat.test <- run_single_variant_test(gene, phenotypes, covariates, variant)
     
     # Print result to report file(s)
-    print_results_for_single_variant(skat.test, prefix, report_type, path)
+    print_results_for_single_variant(skat.test, prefix, AC_UBC, AC_CBC, report_type, path)
     
     
   }else{ # For genes containing multiple variants
@@ -250,7 +254,7 @@ for (gene in genes){
     skat.test <- run_tests_for_multiple_variants(gene, phenotypes, covariates, genotypes)
 
     # Print results to report file(s)
-    print_results_for_multiple_variants(skat.test, prefix, report_type, path)
+    print_results_for_multiple_variants(skat.test, prefix, AC_UBC, AC_CBC, report_type, path)
 
   }
 }
