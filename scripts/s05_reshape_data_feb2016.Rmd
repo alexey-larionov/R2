@@ -2,10 +2,21 @@
 title: "Reshape and clean data: wecare feb2016"
 author: "Alexey Larionov"
 output: html_document
+params:
+  interim_data: ""
+  subset: ""
 ---
 
-started: 01Mar2016
-last updated: 26Jun2016
+started: 01Mar2016  
+last updated: 10Aug2016
+
+# Summary
+
+Select data for the requiested subset  
+Explore and clean variants annotations (some messy outputs of VEP etc)  
+Explore and clean cases (remove odd an duplicated cases etc)  
+Explore and clean phenoitype data, compile a single table with required phenotype annotations  
+Save selected reshaped data
 
 # start_section
 
@@ -14,17 +25,13 @@ last updated: 26Jun2016
 # Start time
 Sys.time()
 
-# Clean-up
-rm(list=ls())
+# Do NOT clean-up at this stage
+#rm(list=ls()) # this would remove params object!
 graphics.off()
 
-# Set root working folder
-library(knitr)
-opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
-#setwd("/scratch/medgen/scripts/rscripts_05.16")
-
-#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
-#setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
+# Read parameters
+interim_data_folder <- params$interim_data
+data_subset <- params$subset
 
 # Required libraries
 library(tidyr) # for separate
@@ -32,22 +39,87 @@ library(dplyr) # for piping, filter, select etc
 library(stringr) # for str_replace_all
 library(ggplot2) # for some plots
 
+# For debugging
+#interim_data_folder <- "/scratch/medgen/users/alexey/wecare_aug2016/interim_data"
+#data_subset <- "priority_genes_strict"
+#setwd("/scratch/medgen/scripts/wecare_skat_08.16/scripts")
+
+# Check subset
+if (! data_subset %in% c("strict", "std.1", "std.2", "relaxed", "priority_genes_relaxed", "priority_genes_strict", "all_variants")){
+  print("Wrong data subset")
+  stop
+}
+
 ```
 
 # load_data
 
 ```{r load_data}
 
-load(file="data/s04_filter_by_effect_feb2016.RData")
+# Remove params object to avoid interference with load() function
+rm(params)
+
+interim_data_file <- paste(interim_data_folder, "s04_filter_by_effect_feb2016.RData", sep="/")
+load(file=interim_data_file)
 ls()
 
-vv.df <- vv.std
-genotypes.mx <- gt.std
-colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+if(data_subset == "strict"){
+  vv.df <- vv.str
+  genotypes.mx <- gt.str
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_str_feb2016.RData", sep="/")
+}
 
-rm(vv.std, gt.std, gq.std, dp.std, ref.std, alt.std)
+if(data_subset == "std.1"){
+  vv.df <- vv.std.1
+  genotypes.mx <- gt.std.1
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_std1_feb2016.RData", sep="/")
+}
+
+if(data_subset == "std.2"){
+  vv.df <- vv.std.2
+  genotypes.mx <- gt.std.2
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_std2_feb2016.RData", sep="/")
+}
+
+if(data_subset == "relaxed"){
+  vv.df <- vv.rel
+  genotypes.mx <- gt.rel
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_rel_feb2016.RData", sep="/")
+}
+
+if(data_subset == "priority_genes_relaxed"){
+  vv.df <- vv.pri.rel
+  genotypes.mx <- gt.pri.rel
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_pri_rel_feb2016.RData", sep="/")
+}
+
+if(data_subset == "priority_genes_strict"){
+  vv.df <- vv.pri.str
+  genotypes.mx <- gt.pri.str
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_pri_str_feb2016.RData", sep="/")
+}
+
+if(data_subset == "all_variants"){
+  genotypes.mx <- gt.mx
+  colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
+  interim_data_file <- paste(interim_data_folder, "s05_reshape_all_feb2016.RData", sep="/")
+}
+
+rm(gt.mx, gq.mx, dp.mx, ref.mx, alt.mx)
+
 rm(vv.str, gt.str, gq.str, dp.str, ref.str, alt.str)
+rm(vv.std.1, gt.std.1, gq.std.1, dp.std.1, ref.std.1, alt.std.1)
+rm(vv.std.2, gt.std.2, gq.std.2, dp.std.2, ref.std.2, alt.std.2)
 rm(vv.rel, gt.rel, gq.rel, dp.rel, ref.rel, alt.rel)
+
+rm(vv.pri.rel, gt.pri.rel, gq.pri.rel, dp.pri.rel, ref.pri.rel, alt.pri.rel)
+rm(vv.pri.str, gt.pri.str, gq.pri.str, dp.pri.str, ref.pri.str, alt.pri.str)
 
 ls()
 
@@ -99,7 +171,7 @@ variants.df <-
   vv.df %>% 
   select(VarID, SYMBOL, TYPE, CHROM, POS, REF, ALT, AC, AF, AN, 
          Consequence, SIFT, PolyPhen, CLIN_SIG, 
-         GMAF, EUR_MAF, ALT_frequency_in_1k_95)
+         GMAF, EUR_MAF, ALT_frequency_in_1k_95, bc_risk, bc_somatic, dna_repair, es_related)
 
 rm(vv.df)
 
@@ -172,6 +244,31 @@ variants.df <-
   mutate(PolyPhen_score=as.numeric(
     sub(".*\\(","", sub("\\)","",PolyPhen)))) %>% 
   select(-PolyPhen)
+
+# --- Rearrange priority genes columns --- #
+
+bc_risk_v <- rep("", nrow(variants.df))
+"bc_risk" -> bc_risk_v[variants.df$bc_risk]
+
+bc_somatic_v <- rep("", nrow(variants.df))
+"bc_somatic" -> bc_somatic_v[variants.df$bc_somatic]
+
+dna_repair_v <- rep("", nrow(variants.df))
+"dna_repair" -> dna_repair_v[variants.df$dna_repair]
+
+es_related_v <- rep("", nrow(variants.df))
+"es_related" -> es_related_v[variants.df$es_related]
+
+priority_genes <- paste(bc_risk_v,bc_somatic_v,dna_repair_v,es_related_v, sep=",")
+priority_genes <- sub(",{2,}", ",", priority_genes)
+priority_genes <- sub("^,", "", priority_genes)
+priority_genes <- sub(",$", "", priority_genes)
+
+variants.df <- cbind(variants.df,priority_genes)
+variants.df <- variants.df %>% select(- bc_risk, - bc_somatic, - dna_repair, - es_related)
+NA -> variants.df[variants.df$priority_genes == "", "priority_genes"]
+
+rm(priority_genes, bc_risk_v, bc_somatic_v, dna_repair_v, es_related_v)
 
 # Check variants table
 dim(variants.df)
@@ -1715,7 +1812,7 @@ sum(rownames(genotypes.mx) != variants.df$VarID )
 
 ```{r save_data}
 
-save.image(file="data/s05_reshape_data_feb2016.RData")
+save.image(file=interim_data_file)
 
 ```
 

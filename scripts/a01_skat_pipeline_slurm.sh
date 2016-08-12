@@ -18,7 +18,7 @@
 #SBATCH --no-requeue
 #SBATCH -p sandybridge
 ##SBATCH --output skat_pipeline.log
-#SBATCH --qos=INTR
+##SBATCH --qos=INTR
 
 # Stop on errors
 set -e
@@ -59,6 +59,7 @@ project_folder=$(awk '$1=="project_folder:" {print $2}' "${job_file}")
 source_data_folder="${project_folder}/source_data"
 interim_data_folder="${project_folder}/interim_data"
 priority_genes_folder="${project_folder}/gene_lists"
+results_folder="${project_folder}/results"
 logs_folder="${project_folder}/logs"
 r_libs_folder=$(awk '$1=="r_libs_folder:" {print $2}' "${job_file}")
 r_bin_folder=$(awk '$1=="r_bin_folder:" {print $2}' "${job_file}")
@@ -73,6 +74,9 @@ homs_max_frma=$(awk '$1=="homs_max_frma:" {print $2}' "${job_file}")
 
 min_call_rate=$(awk '$1=="min_call_rate:" {print $2}' "${job_file}")
 
+data_subset=$(awk '$1=="data_subset:" {print $2}' "${job_file}")
+start_step=$(awk '$1=="start_step:" {print $2}' "${job_file}")
+
 #--------------------------------------------------#
 #          Report parameters for the job           #
 #--------------------------------------------------#
@@ -84,6 +88,7 @@ echo "project_folder: ${project_folder}" #e.g. "/scratch/medgen/users/alexey/wec
 echo "source_data_folder: ${source_data_folder}"
 echo "interim_data_folder: ${interim_data_folder}"
 echo "priority_genes_folder: ${priority_genes_folder}"
+echo "results_folder: ${results_folder}"
 echo "logs_folder: ${logs_folder}"
 echo "r_libs_folder: ${r_libs_folder}" # e.g. "/scratch/medgen/tools/r/R-3.2.2/lib64/R/library/"
 echo "r_bin_folder: ${r_bin_folder}" # e.g. "/scratch/medgen/tools/r/R-3.2.2/bin"
@@ -98,6 +103,9 @@ echo "homs_max_frma: ${homs_max_frma}" # e.g. 0.05
 echo ""
 echo "min_call_rate: ${min_call_rate}" # e.g. 0.8
 echo ""
+echo "data_subset: ${data_subset}" # e.g. priority_genes_strict
+echo "start_step: ${start_step}" # Can be 1 or 5
+echo ""
 echo " ------------------------ "
 
 #--------------------------------------------------#
@@ -109,7 +117,7 @@ echo " ------------------------ "
 echo "Started reading data: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-if [ "a" == "b" ]; then
+if [ "${start_step}" == "1" ]; then
 #######################
 
 # R script name
@@ -131,6 +139,9 @@ fi
 
 # Progress report
 echo "Completed reading data: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
 
 #--------------------------------------------------#
 #                  Filter variants                 #
@@ -141,7 +152,7 @@ echo "Completed reading data: $(date +%d%b%Y_%H:%M:%S)"
 echo "Started filtering variants: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-if [ "a" == "b" ]; then
+if [ "${start_step}" == "1" ]; then
 #######################
 
 # R script name
@@ -163,6 +174,9 @@ fi
 
 # Progress report
 echo "Completed filtering variants: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
 
 #--------------------------------------------------#
 #                  Filter genotypes                #
@@ -173,7 +187,7 @@ echo "Completed filtering variants: $(date +%d%b%Y_%H:%M:%S)"
 echo "Started filtering genotypes: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-if [ "a" == "b" ]; then
+if [ "${start_step}" == "1" ]; then
 #######################
 
 # R script name
@@ -195,6 +209,9 @@ fi
 
 # Progress report
 echo "Completed filtering genotypes: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
 
 #--------------------------------------------------#
 #                  Filter by effect                #
@@ -205,7 +222,7 @@ echo "Completed filtering genotypes: $(date +%d%b%Y_%H:%M:%S)"
 echo "Started filtering by effect: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-if [ "a" == "a" ]; then
+if [ "${start_step}" == "1" ]; then
 #######################
 
 # R script name
@@ -227,10 +244,154 @@ fi
 
 # Progress report
 echo "Completed filtering by effect: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
+
+#--------------------------------------------------#
+#                   Reshape data                   #
+#--------------------------------------------------#
+# ~5 min
+
+# Progress report
+echo "Started reshaping data: $(date +%d%b%Y_%H:%M:%S)"
 
 #######################
-exit
+#if [ "a" == "a" ]; then
 #######################
+
+# R script name
+r_script="${scripts_folder}/s05_reshape_data_feb2016.Rmd"
+
+# Report name
+r_script_name=$(basename "${r_script}")
+html_report="${logs_folder}/${r_script_name%.Rmd}_${data_subset}.html"
+
+# Compile R expression to run (commnds are in single line, separated by semicolon)
+r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_script}"', params=list(interim_data='"${interim_data_folder}"', subset='"${data_subset}"'), output_file='"${html_report}"')"
+
+# Run R expressions
+"${r}" -e "${r_expressions}"
+
+#######################
+#fi
+#######################
+
+# Progress report
+echo "Completed reshaping data: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
+
+#--------------------------------------------------#
+#                  Calculate afs                   #
+#--------------------------------------------------#
+# ~5 min
+
+# Progress report
+echo "Started calculating afs: $(date +%d%b%Y_%H:%M:%S)"
+
+#######################
+#if [ "a" == "a" ]; then
+#######################
+
+# R script name
+r_script="${scripts_folder}/s06_recalculate_afs_feb2016.Rmd"
+
+# Report name
+r_script_name=$(basename "${r_script}")
+html_report="${logs_folder}/${r_script_name%.Rmd}_${data_subset}.html"
+
+# Compile R expression to run (commnds are in single line, separated by semicolon)
+r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_script}"', params=list(interim_data='"${interim_data_folder}"', subset='"${data_subset}"'), output_file='"${html_report}"')"
+
+# Run R expressions
+"${r}" -e "${r_expressions}"
+
+#######################
+#fi
+#######################
+
+# Progress report
+echo "Completed calculating afs: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
+
+#--------------------------------------------------#
+#             Calculate variants glm               #
+#--------------------------------------------------#
+# ~5 min
+
+# Progress report
+echo "Started calculating variants glm: $(date +%d%b%Y_%H:%M:%S)"
+
+#######################
+#if [ "a" == "a" ]; then
+#######################
+
+# R script name
+r_script="${scripts_folder}/s07_variants_glm_feb2016.Rmd"
+
+# Report name
+r_script_name=$(basename "${r_script}")
+html_report="${logs_folder}/${r_script_name%.Rmd}_${data_subset}.html"
+
+# Compile R expression to run (commnds are in single line, separated by semicolon)
+r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_script}"', params=list(interim_data='"${interim_data_folder}"', subset='"${data_subset}"', results_folder='"${results_folder}"'), output_file='"${html_report}"')"
+
+# Run R expressions
+"${r}" -e "${r_expressions}"
+
+#######################
+#fi
+#######################
+
+# Progress report
+echo "Completed calculating variants glm: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
+
+#--------------------------------------------------#
+#              Calculate genes skat                #
+#--------------------------------------------------#
+# Up to overnight - depends on size of data subset
+
+# Progress report
+echo "Started calculating genes skat: $(date +%d%b%Y_%H:%M:%S)"
+
+#######################
+#if [ "a" == "a" ]; then
+#######################
+
+# R script name
+r_script="${scripts_folder}/s08_genes_SKAT_feb2016.Rmd"
+
+# Report name
+r_script_name=$(basename "${r_script}")
+html_report="${logs_folder}/${r_script_name%.Rmd}_${data_subset}.html"
+
+# Compile R expression to run (commnds are in single line, separated by semicolon)
+r_expressions="library('rmarkdown', lib='"${r_libs_folder}/"'); render('"${r_script}"', params=list(interim_data='"${interim_data_folder}"', subset='"${data_subset}"', results_folder='"${results_folder}"', scripts_folder='"${scripts_folder}"'), output_file='"${html_report}"')"
+
+# Run R expressions
+"${r}" -e "${r_expressions}"
+
+#######################
+#fi
+#######################
+
+# Progress report
+echo "Completed calculating genes skat: $(date +%d%b%Y_%H:%M:%S)"
+echo ""
+echo " ------------------------ "
+echo ""
+
+#--------------------------------------------------#
+#       Calculate priority gene groups skat        #
+#--------------------------------------------------#
+# ~5 min
 
 #--------------------------------------------------#
 
