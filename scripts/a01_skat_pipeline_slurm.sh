@@ -18,7 +18,7 @@
 #SBATCH --no-requeue
 #SBATCH -p sandybridge
 ##SBATCH --output skat_pipeline.log
-#SBATCH --qos=INTR
+##SBATCH --qos=INTR
 
 # Stop on errors
 set -e
